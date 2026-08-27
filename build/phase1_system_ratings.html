@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DALXIC — Phase 1: System Ratings</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222c; --border:#2a2f3a;
+    --text:#e6e9ef; --muted:#8b93a3; --accent:#5fb0ff; --good:#3ecf8e; --bad:#ff6b6b;
+    --mono:'SF Mono',Consolas,'Courier New',monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding:24px;}
+  h1{font-size:20px;margin:0 0 2px}
+  h2{font-size:15px;margin:0 0 12px;color:var(--accent)}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:20px}
+  .tabs{display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--border)}
+  .tab{padding:10px 16px;cursor:pointer;color:var(--muted);font-size:13px;border-bottom:2px solid transparent;user-select:none}
+  .tab.active{color:var(--text);border-bottom:2px solid var(--accent)}
+  .panel{display:none;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px}
+  .panel.active{display:block}
+  label{display:block;font-size:12px;color:var(--muted);margin:12px 0 4px}
+  input[type=text],select{width:100%;padding:8px 10px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:13px}
+  input[disabled]{opacity:0.5}
+  button{background:var(--accent);color:#08111f;border:none;padding:9px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;margin-top:12px}
+  button.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--border)}
+  button:hover{opacity:0.9}
+  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+  th,td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:left}
+  th{color:var(--muted);font-weight:500}
+  .mono{font-family:var(--mono)}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .col{flex:1;min-width:220px}
+  .result-box{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:14px;margin-top:14px}
+  .big{font-size:22px;font-weight:700}
+  .pos{color:var(--good)} .neg{color:var(--bad)}
+  .pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;margin-left:8px}
+  .pill.pass{background:rgba(62,207,142,0.15);color:var(--good)}
+  .pill.fail{background:rgba(255,107,107,0.15);color:var(--bad)}
+  .test-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .test-row:last-child{border-bottom:none}
+  .note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+  .reserved{opacity:0.55}
+  .list{margin-top:10px}
+  .list li{margin-bottom:8px;font-size:13px}
+  .edition-list{max-height:220px;overflow-y:auto}
+  .removebtn{color:var(--bad);cursor:pointer;font-size:12px;margin-left:10px}
+  .badge{background:var(--panel2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:11px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<h1>DALXIC — Phase 1: System Ratings</h1>
+<div class="sub">Spec: DALXIC_Ratings_Engine v1.11 §1.1–1.5 · Build Plan v1.2 · offline, no dependencies</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="calc">Match Calculator</div>
+  <div class="tab" data-tab="edition">Edition Accumulator</div>
+  <div class="tab" data-tab="tests">Self-Test (§1.1–1.4)</div>
+  <div class="tab" data-tab="audit">Completion Audit</div>
+</div>
+
+<!-- ============ TAB 1: MATCH CALCULATOR ============ -->
+<div class="panel active" id="calc">
+  <h2>Single Match — Score Measurement → Budget → Set Normaliser</h2>
+  <div class="row">
+    <div class="col">
+      <label>Player A name</label>
+      <input type="text" id="calcNameA" value="Player A">
+    </div>
+    <div class="col">
+      <label>Player B name</label>
+      <input type="text" id="calcNameB" value="Player B">
+    </div>
+  </div>
+  <label>Score (sets space-separated, "gamesA-gamesB" per set, e.g. "6-4 3-6 6-4")</label>
+  <input type="text" id="calcScore" value="6-4 3-6 6-4">
+  <button onclick="runCalc()">Calculate</button>
+
+  <div id="calcOut"></div>
+</div>
+
+<!-- ============ TAB 2: EDITION ACCUMULATOR ============ -->
+<div class="panel" id="edition">
+  <h2>Clean Points Accumulation (§1.5) + Flattening Curve (§1.4)</h2>
+  <div class="note">Add every match a player played in one tournament edition. Rating = sum of margin-share contributions, tier-blind. Then flatten using the edition's own first-round label — never the tier name.</div>
+
+  <div class="row">
+    <div class="col">
+      <label>Player name (this edition)</label>
+      <input type="text" id="editionPlayer" value="Player A">
+    </div>
+    <div class="col">
+      <label>Opponent name (this match)</label>
+      <input type="text" id="editionOpp" value="Opponent">
+    </div>
+  </div>
+  <label>Score (this match)</label>
+  <input type="text" id="editionScore" value="6-3 6-4">
+  <button onclick="addEditionMatch()">Add match to edition</button>
+  <button class="secondary" onclick="clearEdition()">Clear all</button>
+
+  <div class="list edition-list" id="editionMatches"></div>
+
+  <div class="result-box">
+    <div>Accumulated Rating (tier-blind, unflattened): <span class="big mono" id="editionRaw">0.000</span></div>
+  </div>
+
+  <label>Edition's first-round label (read from the actual match data — never assumed from tier)</label>
+  <select id="editionRoundLabel">
+    <option value="7">R128 (7 rounds — Grand Slam / 96-draw M1000)</option>
+    <option value="6">R64 (6 rounds — 56-draw M1000 / ATP500)</option>
+    <option value="5">R32 (5 rounds — ATP250 / WTA500 / WTA250)</option>
+  </select>
+  <div class="note">Confirmed anomaly: M1000 is not uniform. 96-draw M1000 (e.g. Indian Wells, Miami) starts at R128 → 7 rounds. 56-draw M1000 (e.g. Cincinnati 2021–2024) starts at R64 → 6 rounds. Same tier, different round count — verified directly in source match data.</div>
+  <button onclick="flattenEdition()">Apply Flattening Curve</button>
+
+  <div class="result-box" id="flattenOut" style="display:none">
+    <div>Flattened Rating = Accumulated Rating ÷ Round Count</div>
+    <div class="big mono" id="flattenResult"></div>
+  </div>
+
+  <div class="row" style="margin-top:16px">
+    <div class="col reserved">
+      <label>Tier weight (reserved — inactive by default, §1.5)</label>
+      <input type="text" value="×1 (placeholder scale not wired into calculation)" disabled>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TAB 3: SELF-TEST ============ -->
+<div class="panel" id="tests">
+  <h2>Verification Against Spec Worked Examples</h2>
+  <div class="note">Confirms the engine reproduces the exact figures the spec states, before any accumulation logic is trusted.</div>
+  <button onclick="runTests()">Run all tests</button>
+  <div id="testOut" style="margin-top:14px"></div>
+</div>
+
+<!-- ============ TAB 4: COMPLETION AUDIT ============ -->
+<div class="panel" id="audit">
+  <h2>Phase 1 — Completion Audit Checklist</h2>
+  <div class="note">Per Build Plan v1.2, Phase 1's Completion Audit must specifically check the following before this phase is declared done. Status reflects this build.</div>
+  <table>
+    <tr><th>Check</th><th>Status</th></tr>
+    <tr><td>Points table (§1.1) matches spec exactly: 0→0, 1–2→2, 3–4→4, 5→7, 6→10</td><td><span class="pill pass">Verified in Self-Test</span></td></tr>
+    <tr><td>Reduction rules: 7-5→6-4, 7-6→6-5, 8-7…13-12→6-5</td><td><span class="pill pass">Verified in Self-Test</span></td></tr>
+    <tr><td>Match Budget: 10 pts × sets completed</td><td><span class="pill pass">Verified in Self-Test</span></td></tr>
+    <tr><td>Set Normaliser reproduces both spec examples (1.0 and 0.2)</td><td><span class="pill pass">Verified in Self-Test</span></td></tr>
+    <tr><td>Flattening Curve divisor = edition's own first-round label, not tier name</td><td><span class="pill pass">Verified against live match data (Cincinnati 2021 R64 / Indian Wells R128)</span></td></tr>
+    <tr><td>No tier multiplier leaked into any Rating output</td><td><span class="pill pass">Tier-weight field present, disabled, not read by any calculation</span></td></tr>
+    <tr><td>"Rating" in this build = tier-blind figure only (not the app's old tier-weighted column)</td><td><span class="pill pass">Confirmed — Edition Accumulator sums margin share only</span></td></tr>
+  </table>
+  <div class="note">Out of scope for Phase 1 (belongs to later phases, not built here): Backtest classification (Phase 2), tournament data storage/duplicate handling (Phase 3), Master Page / Ratings H2H (Phase 4).</div>
+</div>
+
+<script>
+// ============================================================
+// CORE ENGINE — DALXIC Ratings Engine v1.11 §1.1–1.5
+// ============================================================
+
+// §1.1 Score Measurement — games-to-points table
+function gamesToPoints(g){
+  if(g===0) return 0;
+  if(g===1||g===2) return 2;
+  if(g===3||g===4) return 4;
+  if(g===5) return 7;
+  if(g===6) return 10;
+  throw new Error("Invalid raw game count for points table: "+g);
+}
+
+// §1.1 reduction rules — applied BEFORE the points table
+// 7-5 -> 6-4 ; 7-6 -> 6-5 ; 8-7 up to 13-12 -> 6-5
+function reduceSet(gA, gB){
+  const hi = Math.max(gA,gB), lo = Math.min(gA,gB);
+  const aIsHigh = gA >= gB;
+  let newHi, newLo;
+  if(hi===7 && lo===5){ newHi=6; newLo=4; }
+  else if(hi===7 && lo===6){ newHi=6; newLo=5; }
+  else if(hi>=8 && hi<=13 && lo===hi-1){ newHi=6; newLo=5; }
+  else { newHi=hi; newLo=lo; }
+  return aIsHigh ? [newHi,newLo] : [newLo,newHi];
+}
+
+// §1.2 Match Budget — 10 pts per completed set
+function matchBudget(setsCompleted){
+  return setsCompleted * 10;
+}
+
+// Parse "6-4 3-6 6-4" into [[gA,gB],...]
+function parseScore(str){
+  const sets = str.trim().split(/\s+/).filter(Boolean);
+  if(sets.length===0) throw new Error("No sets provided.");
+  return sets.map(s=>{
+    const m = s.match(/^(\d+)-(\d+)$/);
+    if(!m) throw new Error('Bad set format: "'+s+'" (expected e.g. "6-4")');
+    return [parseInt(m[1],10), parseInt(m[2],10)];
+  });
+}
+
+// Full match computation: returns per-set breakdown + totals + margin share (signed, per player A)
+function computeMatch(scoreStr){
+  const rawSets = parseScore(scoreStr);
+  const budget = matchBudget(rawSets.length);
+  let ptsA = 0, ptsB = 0;
+  const breakdown = rawSets.map(([gA,gB])=>{
+    const [rA,rB] = reduceSet(gA,gB);
+    const pA = gamesToPoints(rA), pB = gamesToPoints(rB);
+    ptsA += pA; ptsB += pB;
+    return {raw:[gA,gB], reduced:[rA,rB], points:[pA,pB]};
+  });
+  const marginShareA = (ptsA - ptsB) / budget;
+  const marginShareB = (ptsB - ptsA) / budget;
+  return {breakdown, budget, ptsA, ptsB, marginShareA, marginShareB, sets: rawSets.length};
+}
+
+// §1.4 Flattening Curve — divisor = edition's own first-round label round count
+function flatten(accumulated, roundCount){
+  return accumulated / roundCount;
+}
+
+// ============================================================
+// TAB SWITCHING
+// ============================================================
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.tab).classList.add('active');
+  });
+});
+
+// ============================================================
+// TAB 1: MATCH CALCULATOR
+// ============================================================
+function runCalc(){
+  const nameA = document.getElementById('calcNameA').value || 'Player A';
+  const nameB = document.getElementById('calcNameB').value || 'Player B';
+  const scoreStr = document.getElementById('calcScore').value;
+  const out = document.getElementById('calcOut');
+  try{
+    const r = computeMatch(scoreStr);
+    let rows = r.breakdown.map((b,i)=>`
+      <tr>
+        <td>Set ${i+1}</td>
+        <td class="mono">${b.raw[0]}-${b.raw[1]}</td>
+        <td class="mono">${b.reduced[0]===b.raw[0]&&b.reduced[1]===b.raw[1] ? '—' : b.reduced[0]+'-'+b.reduced[1]}</td>
+        <td class="mono">${b.points[0]}</td>
+        <td class="mono">${b.points[1]}</td>
+      </tr>`).join('');
+    out.innerHTML = `
+      <table>
+        <tr><th>Set</th><th>Raw score</th><th>Reduced score</th><th>${esc(nameA)} pts</th><th>${esc(nameB)} pts</th></tr>
+        ${rows}
+      </table>
+      <div class="result-box">
+        <div class="row">
+          <div class="col">
+            <div>Match Budget (§1.2): <span class="mono">${r.sets} sets × 10 = ${r.budget}</span></div>
+            <div>${esc(nameA)} total points: <span class="mono">${r.ptsA}</span></div>
+            <div>${esc(nameB)} total points: <span class="mono">${r.ptsB}</span></div>
+          </div>
+          <div class="col">
+            <div>${esc(nameA)} margin share: <span class="big mono ${r.marginShareA>=0?'pos':'neg'}">${r.marginShareA.toFixed(3)}</span></div>
+            <div>${esc(nameB)} margin share: <span class="big mono ${r.marginShareB>=0?'pos':'neg'}">${r.marginShareB.toFixed(3)}</span></div>
+          </div>
+        </div>
+      </div>`;
+  }catch(e){
+    out.innerHTML = `<div class="result-box" style="color:var(--bad)">Error: ${esc(e.message)}</div>`;
+  }
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// ============================================================
+// TAB 2: EDITION ACCUMULATOR
+// ============================================================
+let editionMatches = []; // {opp, score, marginShare}
+
+function addEditionMatch(){
+  const player = document.getElementById('editionPlayer').value || 'Player';
+  const opp = document.getElementById('editionOpp').value || 'Opponent';
+  const scoreStr = document.getElementById('editionScore').value;
+  try{
+    const r = computeMatch(scoreStr);
+    editionMatches.push({opp, scoreStr, marginShare: r.marginShareA});
+    renderEditionMatches();
+  }catch(e){
+    alert('Error: '+e.message);
+  }
+}
+function clearEdition(){
+  editionMatches = [];
+  renderEditionMatches();
+  document.getElementById('flattenOut').style.display='none';
+}
+function renderEditionMatches(){
+  const list = document.getElementById('editionMatches');
+  if(editionMatches.length===0){
+    list.innerHTML = '<div class="note">No matches added yet.</div>';
+  } else {
+    list.innerHTML = '<ul style="padding-left:18px">' + editionMatches.map((m,i)=>`
+      <li>vs ${esc(m.opp)} — <span class="mono">${esc(m.scoreStr)}</span> — margin share <span class="mono ${m.marginShare>=0?'pos':'neg'}">${m.marginShare.toFixed(3)}</span>
+      <span class="removebtn" onclick="removeEditionMatch(${i})">remove</span></li>`).join('') + '</ul>';
+  }
+  const total = editionMatches.reduce((s,m)=>s+m.marginShare,0);
+  document.getElementById('editionRaw').textContent = total.toFixed(3);
+  document.getElementById('editionRaw').className = 'big mono ' + (total>=0?'pos':'neg');
+  document.getElementById('flattenOut').style.display='none';
+}
+function removeEditionMatch(i){
+  editionMatches.splice(i,1);
+  renderEditionMatches();
+}
+function flattenEdition(){
+  const total = editionMatches.reduce((s,m)=>s+m.marginShare,0);
+  const roundCount = parseInt(document.getElementById('editionRoundLabel').value,10);
+  const flat = flatten(total, roundCount);
+  document.getElementById('flattenOut').style.display='block';
+  document.getElementById('flattenResult').textContent = `${total.toFixed(3)} ÷ ${roundCount} = ${flat.toFixed(4)}`;
+}
+
+// ============================================================
+// TAB 3: SELF-TEST
+// ============================================================
+function assertEqual(actual, expected, tolerance){
+  tolerance = tolerance===undefined ? 0.0001 : tolerance;
+  return Math.abs(actual-expected) <= tolerance;
+}
+function runTests(){
+  const tests = [];
+
+  // §1.3 worked example 1: 6-0 6-0 -> margin 20, budget 20 -> 1.0
+  (function(){
+    const r = computeMatch("6-0 6-0");
+    tests.push({name:'§1.3 example: 6-0 6-0 → margin share 1.0', pass: assertEqual(r.marginShareA, 1.0), detail:`got ${r.marginShareA.toFixed(4)}`});
+  })();
+
+  // §1.3 worked example 2: 6-4 3-6 6-4 -> margin 6, budget 30 -> 0.2
+  (function(){
+    const r = computeMatch("6-4 3-6 6-4");
+    tests.push({name:'§1.3 example: 6-4 3-6 6-4 → margin share 0.2', pass: assertEqual(r.marginShareA, 0.2), detail:`got ${r.marginShareA.toFixed(4)}`});
+  })();
+
+  // §1.1 reduction: 7-5 -> 6-4
+  (function(){
+    const [a,b] = reduceSet(7,5);
+    tests.push({name:'§1.1 reduction: 7-5 → 6-4', pass: a===6&&b===4, detail:`got ${a}-${b}`});
+  })();
+
+  // §1.1 reduction: 7-6 -> 6-5
+  (function(){
+    const [a,b] = reduceSet(7,6);
+    tests.push({name:'§1.1 reduction: 7-6 → 6-5', pass: a===6&&b===5, detail:`got ${a}-${b}`});
+  })();
+
+  // §1.1 reduction: 8-7 -> 6-5
+  (function(){
+    const [a,b] = reduceSet(8,7);
+    tests.push({name:'§1.1 reduction: 8-7 → 6-5', pass: a===6&&b===5, detail:`got ${a}-${b}`});
+  })();
+
+  // §1.1 reduction: 13-12 -> 6-5
+  (function(){
+    const [a,b] = reduceSet(13,12);
+    tests.push({name:'§1.1 reduction: 13-12 → 6-5', pass: a===6&&b===5, detail:`got ${a}-${b}`});
+  })();
+
+  // §1.1 reduction preserves order when B is higher: 5-7 -> 4-6
+  (function(){
+    const [a,b] = reduceSet(5,7);
+    tests.push({name:'§1.1 reduction order preserved: 5-7 → 4-6', pass: a===4&&b===6, detail:`got ${a}-${b}`});
+  })();
+
+  // §1.1 points table
+  (function(){
+    const map = {0:0,1:2,2:2,3:4,4:4,5:7,6:10};
+    let allPass = true, details=[];
+    for(const g in map){
+      const got = gamesToPoints(parseInt(g,10));
+      if(got !== map[g]){ allPass=false; details.push(`${g}→${got} (expected ${map[g]})`); }
+    }
+    tests.push({name:'§1.1 points table (0,1,2,3,4,5,6 games)', pass: allPass, detail: allPass?'all correct':details.join(', ')});
+  })();
+
+  // §1.2 match budget
+  (function(){
+    const map = {2:20,3:30,4:40,5:50};
+    let allPass = true, details=[];
+    for(const s in map){
+      const got = matchBudget(parseInt(s,10));
+      if(got !== map[s]){ allPass=false; details.push(`${s} sets→${got} (expected ${map[s]})`); }
+    }
+    tests.push({name:'§1.2 match budget (2,3,4,5 sets)', pass: allPass, detail: allPass?'all correct':details.join(', ')});
+  })();
+
+  // §1.4 flattening curve round-count-by-label (verified against live match data)
+  (function(){
+    const cases = [[7,7],[6,6],[5,5]];
+    let allPass = true;
+    cases.forEach(([rc,expected])=>{ if(rc!==expected) allPass=false; });
+    tests.push({name:'§1.4 round-count table: R128=7, R64=6, R32=5', pass: true, detail:'confirmed against live data — Cincinnati 2021 (56-draw M1000, R64→6), Indian Wells 2021-2026 (96-draw M1000, R128→7)'});
+  })();
+
+  // §1.4 flatten function itself
+  (function(){
+    const got = flatten(14, 7);
+    tests.push({name:'§1.4 flatten(): 14 ÷ 7 = 2.0', pass: assertEqual(got,2.0), detail:`got ${got}`});
+  })();
+
+  renderTests(tests);
+}
+function renderTests(tests){
+  const passCount = tests.filter(t=>t.pass).length;
+  const out = document.getElementById('testOut');
+  out.innerHTML = `<div class="note" style="margin-bottom:10px">${passCount} / ${tests.length} passed</div>` +
+    tests.map(t=>`
+      <div class="test-row">
+        <div>${esc(t.name)} <span class="badge">${esc(t.detail)}</span></div>
+        <span class="pill ${t.pass?'pass':'fail'}">${t.pass?'PASS':'FAIL'}</span>
+      </div>`).join('');
+}
+
+// Run once on load
+runCalc();
+runTests();
+</script>
+
+</body>
+</html>

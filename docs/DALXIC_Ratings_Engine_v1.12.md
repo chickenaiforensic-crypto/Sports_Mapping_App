@@ -5,7 +5,7 @@ A Formal Record of the Ratings, Validation & Backtest System — Multi-Sport Sta
 Author: Porgy
 Dalxic — Business Growth Consultant, The Porgys
 Document status: Living document — updated as new sections are added. This document is the authoritative specification for the build; it supersedes and replaces any earlier reference document, including the prior BLUEPRINT.md, which is discarded.
-Version 1.11 • August 2026
+Version 1.12 • August 2026
 
 ---
 
@@ -20,6 +20,7 @@ Section 1: System Ratings ... 4
   1.5 Clean Points Accumulation
   1.6 The Backtest System (Flat, Tier-Blind)
   1.7 Backtest Round Flow and System Update
+  1.8 Muting — Post-Calibration Data Lock
 Section 2: Data Operations ... 5
   2.1 System Update (AI-Assisted Refresh Loop)
   2.2 Data Addon
@@ -62,6 +63,7 @@ Revision History
 | v1.9 | August 2026 | Expanded Section 3.1: the Master Page also serves as a summary dashboard across every compute system in use, for analysing upcoming games. Added the update-timing rule: the app must be refreshed with a player's real result (Section 2.1's System Update loop) before that same player's next match is analysed — a stale rating carried into a new analysis can distort the outcome the system produces. |
 | v1.10 | August 2026 | Correction to Section 1.4: the Flattening Curve's divisor is the total number of rounds in the tournament's fixed format (e.g. 7 for a Grand Slam, R128 through Final) — not, as previously written, the deepest run any player actually had. This runs once per source tournament, before any head-to-head matching, and is confirmed as a shared calculation used by both the Backtest (1.6) and Ratings H2H (3.2). Added the multi-tournament sourcing note: forward-prediction match-ups can draw two players from entirely different prior tournaments, which is precisely why this shared flattening step exists. Added Section 4 (Engine Architecture) documenting the Patchbay System — shared logic built once and patched into every section that needs it, so new layers or sections can be added without restructuring existing work. Established facts elsewhere in the document (Section 1.1's points table, etc.) are unchanged. |
 | v1.11 | August 2026 | Phase 1 audit finding, verified directly against source match data: tier name alone is not a reliable way to determine a tournament's round count for the Flattening Curve. M1000 splits by draw size — a 96-draw M1000 edition starts at R128 (7 rounds, same label a Grand Slam uses), while a 56-draw M1000 edition of the same tier starts at R64 (6 rounds). Confirmed directly from Cincinnati 2021's own match records ("round":"R64"), which contradicted an earlier draft table that had wrongly grouped all M1000 editions under a single 7-round figure. Section 1.4 now specifies that round count must be derived from each edition's own first-round label, never assumed from tier name, with the confirmed label-to-count table and the anomaly written in as a standing rule for future tiers, not a one-off fix. |
+| v1.12 | August 2026 | Added Section 1.8 (Muting — Post-Calibration Data Lock), previously referenced in the original backtest spec but never given its own section. States the confirmed trigger and purpose: real event data is muted once it has been used to calibrate that event's ratings, since the outcome is already reflected in the rebuilt ratings. Three questions are logged as explicitly open, not guessed at: what a mute permits on re-run, whether it's reversible, and whether it's scoped per edition or per match. No implementation should proceed on these three points until confirmed. |
 
 ---
 
@@ -195,6 +197,20 @@ Worked at each match length:
 The Backtest processes one round at a time, in order. As each round completes, it collapses, and the next round processes above it — preserving the full round-by-round order visibly, up through the final.
 
 Once the final round is processed, a single action — "Update System" — applies the accumulated calibration results from the full backtest run into the live system. This click is the calibration commit itself; there is no separate step between finishing the backtest and the system being updated by it.
+
+---
+
+1.8 Muting — Post-Calibration Data Lock
+
+The calibration cycle starts from the most recently completed event's real data. Each "last tournament" is calibrated against its real results, using players' pre-event incoming ratings — sourced from their previous event or year, as defined in Section 1.6. Once that calibration completes and produces rebuilt, updated ratings, the real data that was used to run the calibration is muted.
+
+The purpose: the real scores have already done their job — they taught the ratings system what actually happened, and that outcome is now reflected in the players' new ratings. Muting exists so that same real data isn't reused or double-counted once the system has already "replicated the play" through ratings.
+
+Open items — flagged as an owner directive needing a decision, not resolved here. None of the following should be assumed or built against until confirmed:
+
+1. What a mute permits on a re-run — does re-running the backtest exclude muted data entirely, or does it remain visible or referenceable in some other capacity?
+2. Whether a mute is reversible — not stated.
+3. Whether muting is scoped per edition (the whole tournament's data) or per match (individual match records within it). The description above — "used to calibrate the year is now muted for the year" — leans toward per-edition or per-year, but this has not been confirmed as the actual operating granularity.
 
 ---
 

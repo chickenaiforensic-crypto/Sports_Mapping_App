@@ -36,10 +36,11 @@ Scope:
 - Score classification: Clear Win / Win / Tight Win by loser's fraction of match budget (≤50% / 51–75% / ≥76%), computed once from the real score before ratings are applied — never recomputed later.
 - Round flow (1.7): rounds process in order; each completed round collapses as the next processes above it, through the final.
 - "Update System" action: a single commit that applies the full backtest run's calibration results into the live system.
+- Muting (1.8): once a round/event's real data has calibrated that event's ratings, the real data is muted. Three questions are open and gate this part of the phase specifically — do not implement re-run behavior, reversibility, or mute granularity (per-edition vs. per-match) until the owner confirms all three.
 
 Audit checkpoint: confirm the classification thresholds and round-flow/collapse behavior against the spec's tables before implementation. Confirm explicitly that no tier multiplier is planned anywhere in this phase.
 
-Completion audit must specifically check: Backtest vocabulary stays Correct / Wrong / Tie with Wrong sub-split into Clear Wrong / Wrong / Flippable Wrong — never "Loss," which belongs to Phase 4 only.
+Completion audit must specifically check: Backtest vocabulary stays Correct / Wrong / Tie with Wrong sub-split into Clear Wrong / Wrong / Flippable Wrong — never "Loss," which belongs to Phase 4 only. Also confirm muting has not been implemented beyond what's confirmed in spec Section 1.8 — the three open questions must be resolved before mute/unmute behavior is built, not worked around with an assumed default.
 
 ---
 
@@ -86,3 +87,4 @@ Revision History
 | v1.0 | August 2026 | Initial build plan — Phases 1–4 sequenced from DALXIC_Ratings_Engine.md v1.9, each structured in the Audit / Implementation (gated) / Completion Audit system. |
 | v1.1 | August 2026 | Corrected Phase 1's Flattening Curve scope to match spec v1.10: divisor is the tournament's fixed total rounds, not a player's actual matches played. Added note that this is a Patchbay-shared component (Section 4.1) used identically by the Backtest and Ratings H2H — build it once, not per-section. |
 | v1.2 | August 2026 | Phase 1 Audit reviewed and returned for correction: the submitted round-count table wrongly grouped all M1000 editions under one 7-round figure. Verified against source data that 56-draw M1000 editions start at R64 (6 rounds), while only 96-draw M1000 editions start at R128 (7 rounds) — tier name alone does not determine round count. Phase 1 scope updated to require deriving round count from each edition's own first-round label. Phase 1 Implementation remains gated until the builder resubmits the audit with this correction applied. |
+| v1.3 | August 2026 | Added Muting (spec Section 1.8) to Phase 2 scope, flagged as an owner directive with three explicitly open questions (re-run behavior, reversibility, per-edition vs. per-match granularity). Phase 2's Completion Audit now checks that no mute/unmute mechanism has been built ahead of those three answers. |

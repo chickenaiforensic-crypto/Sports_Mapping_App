@@ -5,7 +5,7 @@ A Formal Record of the Ratings, Validation & Backtest System — Multi-Sport Sta
 Author: Porgy
 Dalxic — Business Growth Consultant, The Porgys
 Document status: Living document — updated as new sections are added. This document is the authoritative specification for the build; it supersedes and replaces any earlier reference document, including the prior BLUEPRINT.md, which is discarded.
-Version 1.10 • August 2026
+Version 1.11 • August 2026
 
 ---
 
@@ -61,6 +61,7 @@ Revision History
 | v1.8 | August 2026 | Added Section 1.7 (Backtest round-to-round UI flow and the Update System commit) and Section 3 (Prediction — the Master Page and Ratings H2H page). Locked a critical vocabulary separation: Prediction uses Win / Tie / Loss (with Clear Loss / Loss / Tight Loss sub-classification, mirroring Win's Clear Win / Win / Tight Win), while the Backtest uses Correct / Wrong / Tie exclusively (Section 1.6). "Loss" and "Wrong" are outputs of two different systems and must never be used interchangeably. |
 | v1.9 | August 2026 | Expanded Section 3.1: the Master Page also serves as a summary dashboard across every compute system in use, for analysing upcoming games. Added the update-timing rule: the app must be refreshed with a player's real result (Section 2.1's System Update loop) before that same player's next match is analysed — a stale rating carried into a new analysis can distort the outcome the system produces. |
 | v1.10 | August 2026 | Correction to Section 1.4: the Flattening Curve's divisor is the total number of rounds in the tournament's fixed format (e.g. 7 for a Grand Slam, R128 through Final) — not, as previously written, the deepest run any player actually had. This runs once per source tournament, before any head-to-head matching, and is confirmed as a shared calculation used by both the Backtest (1.6) and Ratings H2H (3.2). Added the multi-tournament sourcing note: forward-prediction match-ups can draw two players from entirely different prior tournaments, which is precisely why this shared flattening step exists. Added Section 4 (Engine Architecture) documenting the Patchbay System — shared logic built once and patched into every section that needs it, so new layers or sections can be added without restructuring existing work. Established facts elsewhere in the document (Section 1.1's points table, etc.) are unchanged. |
+| v1.11 | August 2026 | Phase 1 audit finding, verified directly against source match data: tier name alone is not a reliable way to determine a tournament's round count for the Flattening Curve. M1000 splits by draw size — a 96-draw M1000 edition starts at R128 (7 rounds, same label a Grand Slam uses), while a 56-draw M1000 edition of the same tier starts at R64 (6 rounds). Confirmed directly from Cincinnati 2021's own match records ("round":"R64"), which contradicted an earlier draft table that had wrongly grouped all M1000 editions under a single 7-round figure. Section 1.4 now specifies that round count must be derived from each edition's own first-round label, never assumed from tier name, with the confirmed label-to-count table and the anomaly written in as a standing rule for future tiers, not a one-off fix. |
 
 ---
 
@@ -123,6 +124,20 @@ This step runs once per source tournament, before any head-to-head matching happ
 Shared mechanism: the Flattening Curve is the same calculation used by both the Backtest (Section 1.6) and Ratings H2H (Section 3.2) — one implementation, patched into both, not two separate versions of the same idea (see Section 4.1, The Patchbay System).
 
 Multi-tournament sourcing: when forward-predicting with Ratings H2H, the players being compared are not limited to a single shared tournament. A player entering a new event (for example, a 2027 WTA event) can carry an incoming rating sourced from any of several different prior tournaments — tournaments the two matched players may never have both appeared in. The Flattening Curve is what makes ratings sourced from tournaments of different depths comparable to each other in that scenario, so an incoming rating from a 7-round Grand Slam run and one from a 4-round smaller event can be placed on the same scale before the match-up is calculated.
+
+How the round count is supplied: not a manual figure entered per tournament, and not a single fixed number per tier name — confirmed against the actual data that tier alone is not reliable. The round count is derived by reading each edition's own first-round label and counting down to the Final.
+
+Confirmed round counts by first-round label:
+
+| First round label | Path to Final | Round count |
+|---|---|---|
+| R128 | R128→R64→R32→R16→QF→SF→F | 7 |
+| R64 | R64→R32→R16→QF→SF→F | 6 |
+| R32 | R32→R16→QF→SF→F | 5 |
+
+Confirmed anomaly — M1000 is not uniform: a 96-draw M1000 edition (e.g. Cincinnati/Shanghai at 96 players) starts at R128 — the same label a true 128-player Grand Slam uses — giving it a round count of 7. A 56-draw M1000 edition of the same tier (e.g. Cincinnati 2021–2024) starts at R64 instead, giving a round count of 6. Both are M1000, but they are not the same round count. This was caught directly in source match data (Cincinnati 2021's own match records read "round":"R64"), after an initial audit incorrectly assumed all M1000 editions shared one round count based on tier name alone. The lesson stands as a standing rule, not a one-off fix: tier name is not a reliable proxy for round count; the edition's actual first-round label is the only trustworthy source.
+
+Also confirmed: the R128 label is reused for a 96-player field, not only a true 128-player field. A reader should not assume "R128" always means a literal 128-player draw — it identifies a stage of the format, and 96-draw M1000 editions are stamped into that same first stage.
 
 1.5 Clean Points Accumulation
 

@@ -19,7 +19,7 @@ Scope:
 - Score Measurement (1.1): games-to-points table, and the 7-5/7-6/13-12 reduction rules.
 - The Match Budget (1.2): 10 points per completed set.
 - The Set Normaliser (1.3): margin-share formula (margin ÷ budget).
-- The Flattening Curve (1.4): divide by the total number of rounds in the tournament's fixed format (e.g. 7 for a Grand Slam) — not by any player's actual matches played. Runs once per source tournament, before head-to-head matching. Shared calculation, patched into both the Backtest and Ratings H2H (see Section 4.1, Patchbay System).
+- The Flattening Curve (1.4): divide by the total number of rounds in the tournament's fixed format (e.g. 7 for a Grand Slam) — not by any player's actual matches played. Runs once per source tournament, before head-to-head matching. Shared calculation, patched into both the Backtest and Ratings H2H (see Section 4.1, Patchbay System). Round count must be derived from each edition's own first-round label (R128=7, R64=6, R32=5) — never assumed from tier name alone; M1000 splits by draw size (96-draw starts at R128, 56-draw starts at R64) and must be handled per-edition, not per-tier.
 - Clean Points Accumulation (1.5): per-match margin share summed per player, tier-blind by default. Tier weighting exists only as a reserved, inactive config value — not to be wired into any live calculation in this phase.
 
 Audit checkpoint: confirm the points table, reduction rules, budget, normaliser, and flattening curve produce the worked examples in the spec exactly, before touching accumulation logic.
@@ -85,3 +85,4 @@ Revision History
 |---|---|---|
 | v1.0 | August 2026 | Initial build plan — Phases 1–4 sequenced from DALXIC_Ratings_Engine.md v1.9, each structured in the Audit / Implementation (gated) / Completion Audit system. |
 | v1.1 | August 2026 | Corrected Phase 1's Flattening Curve scope to match spec v1.10: divisor is the tournament's fixed total rounds, not a player's actual matches played. Added note that this is a Patchbay-shared component (Section 4.1) used identically by the Backtest and Ratings H2H — build it once, not per-section. |
+| v1.2 | August 2026 | Phase 1 Audit reviewed and returned for correction: the submitted round-count table wrongly grouped all M1000 editions under one 7-round figure. Verified against source data that 56-draw M1000 editions start at R64 (6 rounds), while only 96-draw M1000 editions start at R128 (7 rounds) — tier name alone does not determine round count. Phase 1 scope updated to require deriving round count from each edition's own first-round label. Phase 1 Implementation remains gated until the builder resubmits the audit with this correction applied. |
